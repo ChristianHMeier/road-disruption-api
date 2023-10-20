@@ -42,16 +42,13 @@ class DisruptionCall extends Command
      */
     public function handle()
     {
-        try {
-            $this->category = $this->option('category') ?? null;
-            $this->endsBefore = $this->option('endsBefore') ?? null;
-        } catch (e) {
-            this->error('Hier!');
-        }
+        $this->category = $this->option('category') ?? null;
+        $this->endsBefore = $this->option('endsBefore') ?? null;
+        
 
         // Preemptively validate the date format before making the API call
         if ($this->endsBefore !== null && !preg_match("/^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])$/", $this->endsBefore)) {
-            $this->error('The value of endsBefore must be declared in YYYY-MM-DD format.');
+            $this->error('The value of endsBefore must be declared in a valid YYYY-MM-DD format.');
             return;
         }
 
@@ -63,11 +60,11 @@ class DisruptionCall extends Command
             $filteredResponse = $apiResponse;
             unset($apiResponse);
         } elseif (gettype($apiResponse) == 'array' && !is_null($this->category) && !is_null($this->endsBefore)) { // both category and endDate were given
-            $filteredResponse = array_filter($apiResponse, [$this, 'both']);
+            $filteredResponse = array_values(array_filter($apiResponse, [$this, 'both']));
         }  elseif (gettype($apiResponse) == 'array' && !is_null($this->category)) { // only category was given
-            $filteredResponse = array_filter($apiResponse, [$this, 'categories']);
+            $filteredResponse = array_values(array_filter($apiResponse, [$this, 'categories']));
         }  elseif (gettype($apiResponse) == 'array' && !is_null($this->endsBefore)) { // only endDate was given
-            $filteredResponse = array_filter($apiResponse, [$this, 'endDates']);
+            $filteredResponse = array_values(array_filter($apiResponse, [$this, 'endDates']));
         } else { // API call failed, print error message
             $this->error($apiResponse);
         }
@@ -83,7 +80,7 @@ class DisruptionCall extends Command
      * Filter function for requests that provide both a category and an endsBefore parameter
      */
     private function both($item) {
-        return $this->category == $item['category'] && strtotime($this->endsBefore.'T23:59:59Z') <= strtotime($item['endDateTime']);
+        return $this->category == $item['category'] && strtotime($this->endsBefore.'T23:59:59Z') >= strtotime($item['endDateTime']);
     }
 
     /*
@@ -97,6 +94,6 @@ class DisruptionCall extends Command
      * Filter function for endsBefore parameter only
      */
     private function endDates($item) {
-        return strtotime($this->endsBefore.'T23:59:59Z') <= strtotime($item['endDateTime']);
+        return strtotime($this->endsBefore.'T23:59:59Z') >= strtotime($item['endDateTime']) ? true : false;
     }
 }
