@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
@@ -51,9 +52,13 @@ class ApiCall extends Model
      */
     public function getResource() {
         $apiGet = Cache::remember($this->cacheName, $this->cacheLifetime, function () {
-            $response = Http::get($this->url);
-            if ($response->ok()) {
-                return $response->json();
+            try {
+                $response = Http::get($this->url);
+                if ($response->ok()) {
+                    return $response->json();
+                }
+            } catch (ConnectionException $e) {
+                return 'Connection error, call the Network administrator. '.$this->failMessage;
             }
             return $this->failMessage;
         });

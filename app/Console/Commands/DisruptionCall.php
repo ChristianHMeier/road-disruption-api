@@ -69,9 +69,9 @@ class DisruptionCall extends Command
             $this->error($apiResponse);
         }
 
-        if (gettype($filteredResponse) == 'array' && count($filteredResponse) > 0) { // filtered response is a valid array and gave a value greater than zero
+        if (gettype($filteredResponse) == 'array' && count($filteredResponse) > 0) { // filtered response is a valid non-empty array
             $this->info(json_encode($filteredResponse));
-        } else {
+        } elseif (gettype($filteredResponse) == 'array') { // filtered response is an empty array
             $this->error('Invalid category and/or endsBefore value(s)');
         }
     }
