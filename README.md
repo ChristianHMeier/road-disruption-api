@@ -31,10 +31,16 @@ $ php artisan app:disruption-call --category="Planned events"
 This exercise was written in PHP using the Laravel 10 framework. The relevant files for the exercise are:
 
 - app/Console/Commands/DisruptionCall.php
+- app/Models/DateValidation.php
 - app/Models/Disruption.php
+- app/Models/FilterApplication.php
 - app/Models/ApiCall.php
+- tests/Unit/ApiCallTest.php
+- tests/Unit/DateValidationTest.php
+- tests/Unit/DisruptionTest.php
+- tests/Unit/FilterApplicationTest.php
 
-Separating the exercise code in these three files allows to reuse and expand them in case other functionalities are required, be them from the Road Disruption REST API or from an entirely different API.
+Separating the exercise code in these files allows to reuse and expand them in case other functionalities are required, be them from the Road Disruption REST API or from an entirely different API. Please pay attention to how the DateValidation class employs additional checks to ensure a real date is inputted beyond the limitations of PHP's strtotime function, like treating November 31st as valid of a date as December 1st, and applying the complete Gregorian Calendar rules to February.
 
 ## Licenses
 

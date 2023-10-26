@@ -2,7 +2,9 @@
 
 namespace App\Console\Commands;
 
+use App\Models\DateValidation;
 use App\Models\Disruption;
+use App\Models\FilterApplication;
 use Illuminate\Console\Command;
 
 class DisruptionCall extends Command
@@ -38,6 +40,13 @@ class DisruptionCall extends Command
     private $endsBefore;
 
     /**
+     * DateValidation private variable
+     * 
+     * @var DateValidation
+     */
+    private $dateValidation;
+
+    /**
      * Execute the console command.
      */
     public function handle()
@@ -45,55 +54,53 @@ class DisruptionCall extends Command
         $this->category = $this->option('category') ?? null;
         $this->endsBefore = $this->option('endsBefore') ?? null;
         
-
         // Preemptively validate the date format before making the API call
-        if ($this->endsBefore !== null && !preg_match("/^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])$/", $this->endsBefore)) {
-            $this->error('The value of endsBefore must be declared in a valid YYYY-MM-DD format.');
-            return;
+        if ($this->endsBefore !== null) {
+            $this->dateValidation = new DateValidation(['inputDate' => $this->endsBefore]);
+            $validationResponse = $this->dateValidation->validate();
+
+            if (gettype($validationResponse) == 'string')  {
+                $this->error($validationResponse);
+                return;
+            }
         }
 
         $disruption = new Disruption;
         $apiResponse = $disruption->makeAllDisruptionsCall();
         $filteredResponse = null;
-        
-        if (gettype($apiResponse) == 'array' && is_null($this->category) && is_null($this->endsBefore)) { // no filters required, copy directly to filtered response
+
+        if (gettype($apiResponse) == 'array' && count($apiResponse) > 0) { // API response is valid and not empty, check inside for filters
             $filteredResponse = $apiResponse;
-            unset($apiResponse);
-        } elseif (gettype($apiResponse) == 'array' && !is_null($this->category) && !is_null($this->endsBefore)) { // both category and endDate were given
-            $filteredResponse = array_values(array_filter($apiResponse, [$this, 'both']));
-        }  elseif (gettype($apiResponse) == 'array' && !is_null($this->category)) { // only category was given
-            $filteredResponse = array_values(array_filter($apiResponse, [$this, 'categories']));
-        }  elseif (gettype($apiResponse) == 'array' && !is_null($this->endsBefore)) { // only endDate was given
-            $filteredResponse = array_values(array_filter($apiResponse, [$this, 'endDates']));
+           
+            if (!is_null($this->category)) {
+                $categoryFilter = new FilterApplication([
+                    'filterable' => $filteredResponse,
+                    'inputValue' => $this->category,
+                    'targetKey' => 'category',
+                    'operation' => 'isEqual'
+                ]);
+                $filteredResponse = $categoryFilter->apply();
+            }
+
+            if (!is_null($this->endsBefore)) {
+                $dateFilter = new FilterApplication([
+                    'filterable' => $filteredResponse,
+                    'inputValue' => $this->endsBefore.'T23:59:59Z',
+                    'targetKey' => 'endDateTime',
+                    'operation' => 'isBefore'
+                ]);
+                $filteredResponse = $dateFilter->apply();
+            }
         } else { // API call failed, print error message
             $this->error($apiResponse);
         }
 
-        if (gettype($filteredResponse) == 'array' && count($filteredResponse) > 0) { // filtered response is a valid non-empty array
+        if (gettype($apiResponse) == 'array' && count($apiResponse) == 0) { // API response is a valid empty array
+            $this->info('No accidents to report!');
+        } elseif (gettype($filteredResponse) == 'array' && count($filteredResponse) > 0) { // filtered response is a valid non-empty array
             $this->info(json_encode($filteredResponse));
         } elseif (gettype($filteredResponse) == 'array') { // filtered response is an empty array
-            $this->error('Invalid category and/or endsBefore value(s)');
+            $this->error('Category and/or endsBefore values left out all results.');
         }
-    }
-
-    /*
-     * Filter function for requests that provide both a category and an endsBefore parameter
-     */
-    private function both($item) {
-        return $this->category == $item['category'] && strtotime($this->endsBefore.'T23:59:59Z') >= strtotime($item['endDateTime']);
-    }
-
-    /*
-     * Filter function for category parameter only
-     */
-    private function categories($item) {
-        return $this->category == $item['category'];
-    }
-
-    /*
-     * Filter function for endsBefore parameter only
-     */
-    private function endDates($item) {
-        return strtotime($this->endsBefore.'T23:59:59Z') >= strtotime($item['endDateTime']) ? true : false;
     }
 }
