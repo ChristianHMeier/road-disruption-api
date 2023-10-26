@@ -12,40 +12,18 @@ class ApiCall extends Model
 {
     use HasFactory;
 
+
     /**
-    * URL resource
-    * 
-    * @var string
-    */
-   private $url;
-
-   /**
-   * Message in case the request fails
-   * 
-   * @var string
-   */
-  private $failMessage;
-
-   /**
-    * Name of cache resource where a GET request will be saved
-    * 
-    * @var ?string
-    */
-   private $cacheName;
-
-   /**
-    * Lifetime in seconds of the cache resource from a GET request
-    * 
-    * @var ?int
-    */
-   private $cacheLifetime;
-
-   public function __construct(string $url, string $failMessage = 'Could not retrieve resource', $cacheName = null, $cacheLifetime = null) {
-    $this->url = $url;
-    $this->failMessage = $failMessage;
-    $this->cacheName = $cacheName;
-    $this->cacheLifetime = $cacheLifetime;
-   }
+     * The attributes that are mass assignable.
+     *
+     * @var array
+     */
+    protected $fillable = [
+        'url',
+        'failMessage',        
+        'cacheName',
+        'cacheLifetime',
+    ];
 
     /**
      * Execute a GET request.

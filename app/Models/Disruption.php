@@ -11,7 +11,12 @@ class Disruption extends Model
     use HasFactory;
 
     public function makeAllDisruptionsCall () {
-        $apiCall = new ApiCall('https://api.tfl.gov.uk/Road/all/Disruption', 'The external Road Disruption API could not be reached.', 'disruptions_all', 3600);
+        $apiCall = new ApiCall([
+            'url' => 'https://api.tfl.gov.uk/Road/all/Disruption',
+            'failMessage' => 'The external Road Disruption API could not be reached.',
+            'cacheName' => 'disruptions_all',
+            'cacheLifetime' => 3600,
+        ]);
         $disruptions = $apiCall->getResource();
 
         return $disruptions;
